@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import './news/NewsHome.dart';
+import './news/NewsHome/NewsHome.dart';
 import './person/PersonHome.dart';
 
 class App extends StatefulWidget {
