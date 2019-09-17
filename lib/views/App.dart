@@ -19,7 +19,7 @@ class _AppState extends State<App> with SingleTickerProviderStateMixin {
     {
       "title": "资讯列表",
       "route": NewsHome(),
-      "icon": Icons.list,
+      "icon": Icons.home,
     },
     {
       "title": "我",
@@ -44,7 +44,7 @@ class _AppState extends State<App> with SingleTickerProviderStateMixin {
       bottomNavigationBar: BottomNavigationBar(
         items: navigationBarItems,
         currentIndex: _selectedIndex,
-        fixedColor: Colors.blue,
+        selectedItemColor: Colors.red,
         onTap: (int index) {
           setState(() {
             _selectedIndex = index;

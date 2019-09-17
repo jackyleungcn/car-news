@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../data/mock/m_newsHome.dart';
+import 'package:flutter_webview_plugin/flutter_webview_plugin.dart';
 import './NewsHome.service.dart';
 
 import 'package:pull_to_refresh/pull_to_refresh.dart';
@@ -11,52 +11,59 @@ class NewsHome extends StatefulWidget {
 
 class _NewsHome extends State<NewsHome> {
   var data = [];
-  var page = 1;
+  var channel = [];
+  var _score = "-1";
+  var _tagId = "-1";
 
   RefreshController _refreshController = RefreshController();
 
   @override
   initState() {
     super.initState();
-    this._getList(this.page);
+    _init();
+  }
+
+  void _init() async {
+    await _getChennel();
+    _getList();
   }
 
   void _onRefresh() async {
-    this.page = 1;
-    this.data = [];
-    await this._getList(this.page);
+    _score = "-1";
+    await _getList();
     _refreshController.refreshCompleted();
   }
 
   void _onLoading() async {
-    await this._getList(this.page);
-    setState() {}
-    _refreshController.loadComplete();
+    await _getList();
+    setState(() {
+      _refreshController.loadComplete();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    var mock = new MNewsHome();
-
     return Scaffold(
-      appBar: this._makeAppBar(mock.listChannel),
+      appBar: _makeAppBar(channel),
       body: Container(
         color: Color.fromARGB(255, 242, 242, 242),
         child: SmartRefresher(
           enablePullDown: true,
           enablePullUp: true,
-          header: WaterDropHeader(),
+          header: WaterDropHeader(
+            complete: Text("又有新内容啦 ^.^ ~"),
+          ),
           footer: CustomFooter(
             builder: (BuildContext context, LoadStatus mode) {
               Widget body;
               if (mode == LoadStatus.idle) {
                 body = Text("上拉加载");
               } else if (mode == LoadStatus.loading) {
-                body = Text("正在加载");
+                body = Text("正在加载...");
               } else if (mode == LoadStatus.failed) {
                 body = Text("加载失败！点击重试！");
               } else if (mode == LoadStatus.canLoading) {
-                body = Text("松手,加载更多!");
+                body = Text("松手，加载更多!");
               } else {
                 body = Text("没有更多数据了!");
               }
@@ -69,7 +76,7 @@ class _NewsHome extends State<NewsHome> {
           controller: _refreshController,
           onRefresh: _onRefresh,
           onLoading: _onLoading,
-          child: this._makeList(this.data),
+          child: _makeList(data),
         ),
       ),
     );
@@ -79,14 +86,22 @@ class _NewsHome extends State<NewsHome> {
    * 网络请求
    */
 
-  _getList(page) async {
-    var res = await $service.getList(page);
-    this.page++;
+  _getChennel() async {
+    var res = await $service.getChannel();
+    channel = res.result;
+    _tagId = channel[0].id.toString();
+  }
+
+  _getList() async {
+    var res = await $service.getList(score: _score, tagId: _tagId);
+    if(_score == "-1") data = [];
     setState(() {
-      var _newsList = res.result.news.newsList;
+      var _newsList = res.result.news?.list;
+      if(_newsList == null) return;
       for (var i = 0; i < _newsList.length; i++) {
-        this.data.add(_newsList[i]);
+        data.add(_newsList[i]);
       }
+      _score = _newsList[_newsList.length - 1].score;
     });
   }
 
@@ -99,8 +114,8 @@ class _NewsHome extends State<NewsHome> {
       child: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: this._makeSignSearch(),
-        bottom: this._makeChannelListBar(listChannel),
+        title: _makeSignSearch(),
+        bottom: _makeChannelListBar(listChannel),
       ),
     );
   }
@@ -152,7 +167,7 @@ class _NewsHome extends State<NewsHome> {
         padding: EdgeInsets.only(left: 10),
         child: ListView(
           scrollDirection: Axis.horizontal,
-          children: this._makeChannelList(listChannel),
+          children: _makeChannelList(listChannel),
         ),
       ),
       preferredSize: Size.fromHeight(50.0),
@@ -162,17 +177,25 @@ class _NewsHome extends State<NewsHome> {
   _makeChannelList(listChannel) {
     List<Widget> list = [];
     for (int i = 0; i < listChannel.length; i++) {
-      list.add(this._makeChannelItem(listChannel[i], i));
+      list.add(_makeChannelItem(listChannel[i].tag, listChannel[i].id));
     }
     return list;
   }
 
-  _makeChannelItem(text, index) {
-    return Container(
-      margin: EdgeInsets.only(right: 20),
-      child: index == 0
-          ? this._makeSelectedChannel(text)
-          : this._makeNormalChannel(text),
+  _makeChannelItem(text, id) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _tagId = id.toString();
+          _refreshController.requestRefresh();
+        });
+      },
+      child: Container(
+        margin: EdgeInsets.only(right: 20),
+        child: id.toString() == _tagId
+            ? _makeSelectedChannel(text)
+            : _makeNormalChannel(text),
+      ),
     );
   }
 
@@ -217,29 +240,49 @@ class _NewsHome extends State<NewsHome> {
    */
 
   _makeList(list) {
-    // return Container(
-    //   color: Color.fromARGB(255, 242, 242, 242),
-    //   child: ListView.builder(
-    //     itemBuilder: (c, i) => this._listItem(list[i]),
-    //     itemCount: list.length,
-    //   ),
-    // );
     return ListView.builder(
-      itemBuilder: (c, i) => this._listItem(list[i]),
+      itemBuilder: (c, i) => _listItem(list[i]),
       itemCount: list.length,
     );
   }
 
   _listItem(item) {
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.all(15),
-      margin: EdgeInsets.only(top: 5),
-      child: Column(
-        children: <Widget>[
-          this._listItemBody(item),
-          this._listItemFooter(item),
-        ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) {
+              return WebviewScaffold(
+                url: "https://res.youcheyihou.com/auto_home_mobile/news/" +
+                    item.id.toString(),
+                appBar: PreferredSize(
+                  preferredSize: Size.fromHeight(40.0),
+                  child: AppBar(),
+                ),
+                withZoom: true,
+                withLocalStorage: true,
+                hidden: true,
+                initialChild: Container(
+                  color: Colors.black12,
+                  child: const Center(
+                    child: Text('加载中.....'),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+      child: Container(
+        color: Colors.white,
+        padding: EdgeInsets.all(15),
+        margin: EdgeInsets.only(top: 5),
+        child: Column(
+          children: <Widget>[
+            _listItemBody(item),
+            _listItemFooter(item),
+          ],
+        ),
       ),
     );
   }
@@ -251,7 +294,9 @@ class _NewsHome extends State<NewsHome> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
         Text(
-          item.userAccount.nickname,
+          item.userAccount != null
+              ? item.userAccount.nickname
+              : "服务端数据错误：【无名氏】",
           style: TextStyle(
               color: Color.fromARGB(255, 178, 178, 178), fontSize: 12),
         ),
