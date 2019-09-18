@@ -5,7 +5,7 @@ import 'package:crypto/crypto.dart';
 
 class RequestInterceptor extends InterceptorsWrapper {
   @override
-  onRequest(RequestOptions options) {
+  onRequest(RequestOptions options) async {
     {
       int cVer = 321001;
       String cName = "WEB_YCYH";
@@ -17,7 +17,7 @@ class RequestInterceptor extends InterceptorsWrapper {
           timestamp.substring(timestamp.length - 4) +
           cName);
 
-      options.data = new FormData.from({
+      options.data = new FormData.fromMap({
         "data": stringifyData,
         "cname": cName,
         "c_ver": cVer,

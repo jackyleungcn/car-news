@@ -4,7 +4,7 @@ import '../code.dart';
 
 class ResponseInterceptor extends InterceptorsWrapper {
   @override
-  onResponse(Response res) {
+  onResponse(Response res) async {
     RequestOptions option = res.request;
     try {
       if (res.statusCode == 200) {
